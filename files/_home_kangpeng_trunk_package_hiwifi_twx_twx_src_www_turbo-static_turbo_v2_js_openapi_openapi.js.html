@@ -1,0 +1,810 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>/home/kangpeng/trunk/package/hiwifi_twx/twx/src/www/turbo-static/turbo/v2/js/openapi/openapi.js - twxDoc</title>
+
+    <link rel="stylesheet" href="../assets/vendor/prettify/prettify-min.css">
+    <link rel="stylesheet" href="../assets/css/main.css" id="site_styles">
+    <link rel="stylesheet" href="../assets/vendor/bootstrap/css/bootstrap.min.css">
+    <link rel="shortcut icon" type="image/png" href="../assets/favicon.png">
+</head>
+<body class="yui3-smart" _assetsPath="../assets">
+ <nav class="navbar navbar-inverse navbar-fixed-top" role="navigation">
+        <div class="container-fluid">
+            <div class="navbar-header">
+                <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false" aria-controls="navbar">
+                    <span class="sr-only">Toggle navigation</span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                </button>
+               <a class="navbar-brand mainlogo" href="">
+             
+            <img alt="twxDoc" src="../assets/css/logo.png" title="twxDoc">
+            
+                twxDoc
+          </a>
+            </div>
+            <div id="navbar" class="navbar-collapse collapse">
+                 <ul class="nav navbar-nav">
+                    
+                </ul>
+               <div class="navbar-form navbar-right filterAPi" autocomplete="off">
+                <input type="text" id='txtSearchAPI' class="form-control search-query" placeholder="Search for API" />
+                 <ul id="filterList" class="filterItems dropdown-menu" role="menu"></ul>
+                </div>
+            </div>
+        </div>
+    </nav>
+    <div id="sidebar">
+    <h3>Modules/Classes</h3>
+        <div id="api-tabview-filter">
+            <input id='txtSearch' type="search" class="form-control" placeholder="Type to filter Modules/Classes">
+        </div>
+        <dl id="sidebar_list">
+             
+                <dt>
+                    <span class="glyphicon glyphicon-minus"></span>
+                    <a href="../modules/HiWiFi.html">HiWiFi</a>
+                </dt>
+                <dd>
+                    <ul>
+                   
+                       <li>
+                            
+                           <a href="../classes/HiWiFi.dialog.html">HiWiFi.dialog</a>
+                           <ul>
+                                
+                           </ul>
+                       </li>
+                    
+                       <li>
+                            
+                           <a href="../classes/HiWiFi.html">HiWiFi</a>
+                           <ul>
+                                
+                           </ul>
+                       </li>
+                    
+                       <li>
+                            
+                           <a href="../classes/HiWiFi.dataStore.html">HiWiFi.dataStore</a>
+                           <ul>
+                                
+                           </ul>
+                       </li>
+                    
+                    </ul>
+                </dd>
+             
+                <dt>
+                    <span class="glyphicon glyphicon-minus"></span>
+                    <a href="../modules/Openapi.html">Openapi</a>
+                </dt>
+                <dd>
+                    <ul>
+                   
+                       <li>
+                            
+                           <a href="../classes/Openapi.html">Openapi</a>
+                           <ul>
+                                
+                           </ul>
+                       </li>
+                    
+                       <li>
+                            
+                           <a href="../classes/Openapi.mutiCall.html">Openapi.mutiCall</a>
+                           <ul>
+                                
+                           </ul>
+                       </li>
+                    
+                    </ul>
+                </dd>
+             
+        </dl>
+</div>
+   
+    <div class="stdoc-content">
+            <form id="options-form" class="form-inline pull-right">
+        Show:
+        <label for="api-show-inherited" class="checkbox">
+            <input type="checkbox" id="api-show-inherited" checked>
+            Inherited
+        </label>
+
+        <label for="api-show-protected" class="checkbox">
+            <input type="checkbox" id="api-show-protected">
+            Protected
+        </label>
+
+        <label for="api-show-private" class="checkbox">
+            <input type="checkbox" id="api-show-private">
+            Private
+        </label>
+        <label for="api-show-deprecated" class="checkbox">
+            <input type="checkbox" id="api-show-deprecated">
+            Deprecated
+        </label>
+
+    </form>
+
+
+        <div class="apidocs">
+            <div id="docs-main">
+                <div class="content">
+                    <div class="page-header">
+    <h1>/home/kangpeng/trunk/package/hiwifi_twx/twx/src/www/turbo-static/turbo/v2/js/openapi/openapi.js <small>File</small></h1>
+</div>
+
+<div class="file">
+    <pre class="prettyprint linenums" id='src_code'>
+/**
+ * 对调用openapi接口的一系列封装，Rely：JQuery、json3、pushstream
+ * @module Openapi
+ */
+(function (window, undefined) {
+    &quot;use strict&quot;;
+    //cgi的url权限标识
+    var stok = &quot;&quot;;
+    var prototype = Object.prototype;
+    var object_string = prototype.toString;
+    //当前xmlHttpRequest的集合对象
+    var current_xhr = {};
+    //设定默认的xmlHttpRequest请求的超时时间(单位:ms)
+    var timeout_num = 20000;
+    //最多缓存xmlHttpRequest请求的数量(单位:个)
+    //同一接口的xmlhttprequest对象只在数组中最多保存20个(同一个接口不可能20个都在pending,否则那就是问题,所以暂定数组长度为20)
+    var request_cache_max_num = 20;
+    //默认openApi接口的版本型号
+    var default_version = &quot;&quot;;
+    //Openapi代理接口的uri
+    function getOpenapiUri() {
+        if (stok) {
+            return &quot;/cgi-bin/turbo&quot; + stok + &quot;/proxy/call&quot;;
+        } else {
+            //如果不需要登陆认证
+            return &quot;/cgi-bin/turbo/proxy/noauth_call&quot;;
+        }
+    }
+
+    //Fromat JSON对象转换单一key,value的json
+    //{name:&quot;ssid&quot;,value:&quot;HiWiFi-5661&quot;} to {ssid:&quot;HiWiFi-5661&quot;}
+    function simplifyJSON(json_object) {
+        var object = {};
+        var value = &quot;&quot;;
+        $.each(json_object, function () {
+            if (!this || !this.name) {
+                object = json_object;
+                return false;
+            }
+            value = this.value || &quot;&quot;;
+            if (object[this.name]) {
+                //判断对象是否为数组的原生方法
+                if (object_string.call(object[this.name]) !== &quot;[object Array]&quot;) {
+                    object[this.name] = [object[this.name]];
+                }
+                object[this.name].push(value);
+            } else {
+                object[this.name] = value;
+            }
+        });
+        return object;
+    }
+    function setCurrentXHR(full_method_name, xhr) {
+        if (!full_method_name || !xhr) {
+            return;
+        }
+        //将方法名作为当前请求对象 的属性名，对象={name:方法名,value:[xmlhttprequest...]}
+        if (current_xhr[full_method_name]) {
+            if (current_xhr[full_method_name].value.length &gt;= request_cache_max_num) {
+                current_xhr[full_method_name].value.shift();
+            }
+            current_xhr[full_method_name].value.push(xhr);
+        } else {
+            current_xhr[full_method_name] = {
+                name: full_method_name,
+                value: [xhr]
+            };
+        }
+    }
+    //停止当前正在进行的XMLHttpRequest请求
+    function stopRequest(full_method_name) {
+        var xhr = [];
+
+        function stopXHRList(xhr) {
+            var i = 0;
+            for (i = 0; i &lt; xhr.length; i++) {
+                if (xhr[i]) {
+                    if (xhr[i].connection) {
+                        try {
+                            xhr[i].connection.close();
+                        } catch (e) { /* ignore error on closing */ }
+                    } else if (xhr[i].abort) {
+                        xhr[i].abort();
+                    }
+                    xhr[i] = undefined;
+                }
+            }
+        }
+        if (typeof current_xhr === &quot;object&quot;) {
+            //如果传值则停止 所传值类的 xmlhttprequest请求
+            if (typeof full_method_name === &quot;string&quot; &amp;&amp; full_method_name !== &quot;&quot;) {
+                $.each(current_xhr, function () {
+                    xhr = this.value;
+                    if (xhr &amp;&amp; $.isArray(xhr) &amp;&amp; xhr.length &gt; 0 &amp;&amp; this.name === full_method_name) {
+                        stopXHRList(xhr);
+                    }
+                });
+            } else {
+                //如果不传值则停止 所有的正在xmlhttprequest请求
+                $.each(current_xhr, function () {
+                    xhr = this.value;
+                    if (xhr &amp;&amp; $.isArray(xhr) &amp;&amp; xhr.length &gt; 0) {
+                        stopXHRList(xhr);
+                    }
+                });
+            }
+        }
+    }
+
+    function checkRequestParameter(full_method_name, request_data, callbacks) {
+        //对full_method_name进行非string判断
+        if (typeof full_method_name !== &quot;string&quot;) {
+            throw new Error(&quot;that full_method_name is not a string!&quot;);
+            //full_method_name的方法全名称 例:network.wan.get_simple_info
+        } else if (full_method_name.split(&quot;.&quot;).length &lt; 2) {
+            throw new Error(&quot;that full_method_name is like &#x27;xxx.xxx.xxx&#x27;!&quot;);
+            //对request_data进行非undefined判断
+        } else if (typeof request_data === &quot;undefined&quot;) {
+            throw new Error(full_method_name + &quot;::the request_data is must exist&quot;);
+            //对request_configs进行非undefined判断
+        } else if (typeof callbacks !== &quot;object&quot;) {
+            throw new Error(full_method_name + &quot;::that callbacks is not a object!&quot;);
+            //如果没有传入always函数,则对success,responseError,requestError进行判断
+        } else if (typeof callbacks.always !== &quot;function&quot;) {
+            if (typeof callbacks.success !== &quot;function&quot;) {
+                throw new Error(full_method_name + &quot;::the callbacks.success is must exist&quot;);
+            } else if (typeof callbacks.responseError !== &quot;function&quot;) {
+                throw new Error(full_method_name + &quot;::the callbacks.responseError is must exist&quot;);
+            } else if (typeof callbacks.requestError !== &quot;function&quot;) {
+                throw new Error(full_method_name + &quot;::the callbacks.requestError is must exist&quot;);
+            }
+        }
+        return true;
+    }
+
+    //执行ajax请求
+    function executeRequest(ajaxData, request_configs, callbacks_context) {
+        //将函数本地化,作为上下文传如ajax函数,防止并发时callback函数被覆盖
+        //callbacks_的value里不能存放字面量对象,如果是字面量对象会被覆盖
+        //对request_configs进行本地化
+        request_configs = request_configs || {};
+        var timeout = request_configs.timeout || timeout_num;
+        var full_method_name = ajaxData.method || (request_configs.alias || &quot;mutiCall&quot;);
+        var xhr = $.ajax({
+            url: getOpenapiUri() + &quot;?_&quot; + full_method_name,
+            cache: false,
+            type: &quot;POST&quot;,
+            async: true, //同步会影响页面的渲染--此处选择异步
+            dataType: &quot;json&quot;,
+            data: JSON.stringify(ajaxData),
+            timeout: timeout,
+            context: callbacks_context
+        });
+        xhr.done(function (rsp, status, xhr) {
+            var callbacks = $(this)[0];
+            if (rsp.code === 0 || rsp.code === &quot;0&quot;) {
+                if (typeof callbacks.success === &quot;function&quot;) {
+                    callbacks.success(rsp, status, xhr);
+                }
+            } else {
+                if (rsp.code === 99999 || rsp.code === &quot;99999&quot;) {
+                    if (typeof callbacks.noAuthError === &quot;function&quot;) {
+                        callbacks.noAuthError(rsp);
+                        return false;
+                    }
+                }
+                callbacks.responseError(rsp);
+            }
+        });
+        xhr.fail(function (e) {
+            var callbacks = $(this)[0];
+            if (e.status === 0) {
+                if (e.statusText === &quot;abort&quot;) {
+                    if (typeof callbacks.canceledError === &quot;function&quot;) {
+                        callbacks.canceledError(e);
+                        return false;
+                    }
+                } else if (e.statusText === &quot;timeout&quot;) {
+                    if (typeof callbacks.timeoutError === &quot;function&quot;) {
+                        callbacks.timeoutError(e);
+                        return false;
+                    }
+                }
+            }
+            callbacks.requestError(e);
+        });
+        xhr.always(function (rsp) {
+            var callbacks = $(this)[0];
+            if (typeof callbacks.always === &quot;function&quot;) {
+                callbacks.always(rsp);
+            }
+        });
+        setCurrentXHR(full_method_name, xhr);
+        return xhr;
+    }
+    //执行单一接口的http请求的模式的ajax请求
+    function ExecuteSingleRequest(full_method_name, request_data, request_configs, callbacks) {
+        var ajaxData = {
+            method: full_method_name,
+            data: request_data,
+            version: request_configs ? request_configs.version || default_version : default_version
+        };
+        if (request_configs &amp;&amp; request_configs.repeat_call) {
+            ajaxData.repeat_call = request_configs.repeat_call;
+        }
+        //callbacks本地化
+        var callbacks_context = {
+            success: callbacks.success,
+            noAuthError: callbacks.noAuthError,
+            responseError: callbacks.responseError,
+            canceledError: callbacks.canceledError,
+            timeoutError: callbacks.timeoutError,
+            requestError: callbacks.requestError,
+            always: callbacks.always
+        };
+        //执行请求
+        var xhr = executeRequest(ajaxData, request_configs, callbacks_context);
+        return xhr;
+    }
+    //执行多个接口一个http请求的模式的ajax请求
+    function ExecuteMutiRequest(parameters) {
+        var request_configs = parameters.request_configs || {};
+        //多接口调用的success函数包含success和responseError
+        var response_callback = parameters.response_callback || [];
+        //error回调函数与always回调函数依附于全局函数
+        var no_auth_error = parameters.no_auth_error || [];
+        var response_error = parameters.response_error || [];
+        var canceled_error = parameters.canceled_error || [];
+        var timeout_error = parameters.timeout_error || [];
+        var request_error = parameters.request_error || [];
+        var always = parameters.always || [];
+        var muti_arguments = parameters.muti_arguments || [];
+
+        var ajaxData = {
+            muticall: &quot;1&quot;,
+            mutiargs: muti_arguments,
+            version: request_configs ? request_configs.version || default_version : default_version
+        };
+        var callbacks_context = {
+            success: function (rsp, status, xhr) {
+                var data = rsp.data || {};
+                var results = data.results || [];
+                var index_object = {};
+                var array_index = 0;
+                var method = &quot;&quot;;
+                var result = {};
+                var method_callback = {};
+                $.each(results, function (index, value) {
+                    method = value.method || &quot;&quot;;
+                    result = value.result || {};
+                    method_callback = response_callback[method];
+                    if (method_callback) {
+                        if (typeof method_callback.success === &quot;function&quot;) {
+                            if (result.code === 0 || result.code === &quot;0&quot;) {
+                                method_callback.success(result, status, xhr);
+                            } else {
+                                method_callback.responseError(result);
+                            }
+                            //针对muticall的同一接口的多次请求处理
+                        } else if ($.isArray(method_callback)) {
+                            index_object[method] = index_object[method] || {};
+                            array_index = index_object[method].index || 0;
+                            if (!method_callback[array_index]) {
+                                return true;
+                            }
+                            if (result.code === 0 || result.code === &quot;0&quot;) {
+                                method_callback[array_index].success(result, status, xhr);
+                            } else {
+                                method_callback[array_index].responseError(result);
+                            }
+                            array_index++;
+                            index_object[method].index = array_index;
+                        }
+                    }
+                });
+            },
+            noAuthError: function (rsp) {
+                $.each(no_auth_error, function (index, value) {
+                    if (typeof value === &quot;function&quot;) {
+                        value(rsp);
+                    }
+                });
+            },
+            responseError: function (rsp) {
+                $.each(response_error, function (index, value) {
+                    if (typeof value === &quot;function&quot;) {
+                        value(rsp);
+                    }
+                });
+            },
+            canceledError: function (e) {
+                $.each(canceled_error, function (index, value) {
+                    if (typeof value === &quot;function&quot;) {
+                        value(e);
+                    }
+                });
+            },
+            timeoutError: function (e) {
+                $.each(timeout_error, function (index, value) {
+                    if (typeof value === &quot;function&quot;) {
+                        value(e);
+                    }
+                });
+            },
+            requestError: function (e) {
+                $.each(request_error, function (index, value) {
+                    if (typeof value === &quot;function&quot;) {
+                        value(e);
+                    }
+                });
+            },
+            always: function (rsp) {
+                $.each(always, function (index, value) {
+                    if (typeof value === &quot;function&quot;) {
+                        value(rsp);
+                    }
+                });
+            }
+        };
+        //执行请求
+        var xhr = executeRequest(ajaxData, request_configs, callbacks_context);
+        return xhr;
+    }
+
+    /**
+     * 初始化Openapi对象
+     * @class  Openapi
+     * @constructor
+     * @param {object} muti_call        经过初始化和其他处理的muti_call对象
+     * @return {object}                 经过初始化后的Openapi对象
+     */
+    var Openapi = function (muti_call) {
+        var that = {};
+        /**
+         * 追加需要调用的openapi借口，当初始的Openapi对象含有muti_call对象时，则向muti_call的对象上追加 also see {{#crossLink &quot;Openapi.mutiCall/push&quot;}}{{/crossLink}}，否则直接执行
+         * call函数 also see {{#crossLink &quot;Openapi/call&quot;}}{{/crossLink}}
+         * @method appendCall
+         * @public
+         * @return {object} xmlhttprequest | Openapi
+         */
+        if (muti_call &amp;&amp; typeof muti_call === &quot;object&quot; &amp;&amp; typeof muti_call.send === &quot;function&quot; &amp;&amp; typeof muti_call.push === &quot;function&quot;) {
+            that.appendCall = function (full_method_name, request_data, request_configs, callbacks) {
+                return muti_call.push(full_method_name, request_data, callbacks);
+            };
+        } else {
+            that.appendCall = function (full_method_name, request_data, request_configs, callbacks) {
+                return Openapi.call(full_method_name, request_data, request_configs, callbacks);
+            };
+        }
+        return that;
+    };
+
+    //扩展openapi对象
+    $.extend(true, Openapi, {
+        /**
+         * 设置Openapi.js中私有stok变量（用于URL中，权限标示字符串）
+         * @method setStok
+         * @public
+         * @param {string} new_stok
+         */
+        setStok: function (new_stok) {
+            stok = new_stok;
+        },
+        /**
+         * 获取Openapi.js中私有stok变量（用于URL中，权限标示字符串）
+         * @method getStok
+         * @public
+         * @param
+         * @return {string} 内部缓存的stok变量
+         */
+        getStok: function () {
+            return stok;
+        },
+        /**
+         * 请求一个openapi接口
+         * @method call
+         * @public
+         * @param   {string}    full_method_name            openapi接口方法的全称
+         * @param   {object}    request_data                接口的入参
+         * @param   {object}    request_configs             请求的附件参数配置
+         * @param   {string}    request_configs.version     接口的版本
+         * @param   {string}    request_configs.alias       xmlhttprequest的别名，同样会在浏览器的network选项中显示
+         * @param   {string}    request_configs.timeout     xmlhttprequest的超时时间
+         * @param   {object}    callbacks                   回调函数的包装对象
+         * @param   {function}    callbacks.success         请求接口的成功回调
+         * @param   {function}    callbacks.noAuthError     请求接口的 无登陆权限的error 回调
+         * @param   {function}    callbacks.responseError   请求接口的 接口报错回调
+         * @param   {function}    callbacks.canceledError   http请求被取消的回调
+         * @param   {function}    callbacks.timeoutError    http请求超时的回调
+         * @param   {function}    callbacks.requestError    http失败的回调
+         * @param   {function}    callbacks.always          http请求无论成功或失败，都执行的回调函数
+         * @return {object} 一个xmlHttprequest对象
+         */
+        call: function (full_method_name, request_data, request_configs, callbacks) {
+            //校验参数
+            checkRequestParameter(full_method_name, request_data, callbacks);
+            //把request_data处理成与Openapi约定的格式,封装到ajaxData
+            if (!request_data) {
+                request_data = {};
+            } else if (typeof request_data === &quot;object&quot;) {
+                request_data = simplifyJSON(request_data);
+            }
+            return new ExecuteSingleRequest(full_method_name, request_data, request_configs, callbacks);
+        },
+        /**
+         * 同一个http请求多个接口的初始化函数
+         * @class Openapi.mutiCall
+         * @public
+         * @for Openapi
+         * @param   {object}    request_configs             请求的附件参数配置
+         * @param   {string}    request_configs.version     接口的版本
+         * @param   {string}    request_configs.alias       xmlhttprequest的别名，同样会在浏览器的network选项中显示
+         * @param   {string}    request_configs.timeout     xmlhttprequest的超时时间
+         * @param   {object}    global_error_callbacks                   回调函数的包装对象
+         * @param   {function}    global_error_callbacks.noAuthError     请求接口的 无登陆权限的error 回调
+         * @param   {function}    global_error_callbacks.responseError   请求接口的 接口报错回调
+         * @param   {function}    global_error_callbacks.canceledError   http请求被取消的回调
+         * @param   {function}    global_error_callbacks.timeoutError    http请求超时的回调
+         * @param   {function}    global_error_callbacks.requestError    http失败的回调
+         * @param   {function}    global_error_callbacks.always          http请求无论成功或失败，都执行的回调函数
+         * @return {object} 一个xmlHttprequest对象
+         */
+        mutiCall: function (request_configs, global_error_callbacks) {
+            var response_callback = {};
+            var muti_arguments = [];
+            var no_auth_error = [];
+            var response_error = [];
+            var canceled_error = [];
+            var timeout_error = [];
+            var request_error = [];
+            var always = [];
+
+            function addFunctionToArray(callbacks) {
+                if (callbacks) {
+                    if (typeof callbacks.noAuthError === &quot;function&quot;) {
+                        no_auth_error.push(callbacks.noAuthError);
+                    }
+                    if (typeof callbacks.responseError === &quot;function&quot;) {
+                        response_error.push(callbacks.responseError);
+                    }
+                    if (typeof callbacks.canceledError === &quot;function&quot;) {
+                        canceled_error.push(callbacks.canceledError);
+                    }
+                    if (typeof callbacks.timeoutError === &quot;function&quot;) {
+                        timeout_error.push(callbacks.timeoutError);
+                    }
+                    if (typeof callbacks.requestError === &quot;function&quot;) {
+                        request_error.push(callbacks.requestError);
+                    }
+                    if (typeof callbacks.always === &quot;function&quot;) {
+                        always.push(callbacks.always);
+                    }
+                }
+            }
+            addFunctionToArray(global_error_callbacks);
+            var that = {
+                /**
+                 * 完成muti_call的装填后，发起xmlhttprequest
+                 * @method send
+                 * @public
+                 * @for Openapi.mutiCall
+                 * @param
+                 * @return {object}             xmlhttprequest
+                 */
+                send: function () {
+                    if (!muti_arguments || muti_arguments.length &lt; 1) {
+                        throw new Error(&quot;::the full_method_name, request_data, request_configs, callbacks is must exist!&quot;);
+                    }
+                    var parameters = {
+                        request_configs: request_configs,
+                        muti_arguments: muti_arguments,
+                        response_callback: response_callback,
+                        no_auth_error: no_auth_error,
+                        response_error: response_error,
+                        canceled_error: canceled_error,
+                        timeout_error: timeout_error,
+                        request_error: request_error,
+                        always: always
+                    };
+                    //发送请求
+                    var xhr = new ExecuteMutiRequest(parameters);
+                    //释放内存
+                    response_callback = null;
+                    muti_arguments = null;
+                    no_auth_error = null;
+                    response_error = null;
+                    canceled_error = null;
+                    timeout_error = null;
+                    request_error = null;
+                    always = null;
+                    return xhr;
+                },
+                /**
+                 * 初始化muti_call后，向muti_call中添加对openapi接口的请求
+                 * @method push
+                 * @public
+                 * @for Openapi.mutiCall
+                 * @param   {string}    full_method_name            openapi接口方法的全称
+                 * @param   {object}    request_data                接口的入参
+                 * @param   {object}    callbacks                   回调函数的包装对象
+                 * @param   {function}    callbacks.success         请求接口的成功回调
+                 * @param   {function}    callbacks.noAuthError     请求接口的 无登陆权限的error 回调
+                 * @param   {function}    callbacks.responseError   请求接口的 接口报错回调
+                 * @param   {function}    callbacks.canceledError   http请求被取消的回调
+                 * @param   {function}    callbacks.timeoutError    http请求超时的回调
+                 * @param   {function}    callbacks.requestError    http失败的回调
+                 * @param   {function}    callbacks.always          http请求无论成功或失败，都执行的回调函数
+                 * @return {object} 一个xmlHttprequest对象
+                 */
+                push: function (full_method_name, request_data, callbacks) {
+                    //校验参数
+                    checkRequestParameter(full_method_name, request_data, callbacks);
+                    addFunctionToArray(callbacks);
+                    if (typeof response_callback[full_method_name] === &quot;undefined&quot;) {
+                        response_callback[full_method_name] = {
+                            success: callbacks.success,
+                            responseError: callbacks.responseError
+                        };
+                        //针对muticall的同一接口的多次请求处理--如果是数组
+                    } else if ($.isArray(response_callback[full_method_name])) {
+                        response_callback[full_method_name].push({
+                            success: callbacks.success,
+                            responseError: callbacks.responseError
+                        });
+                        //针对muticall的同一接口的多次请求处理--如果不是是数组
+                    } else {
+                        response_callback[full_method_name] = [response_callback[full_method_name]];
+                        response_callback[full_method_name].push({
+                            success: callbacks.success,
+                            responseError: callbacks.responseError
+                        });
+                    }
+
+                    //把request_data处理成与Openapi约定的格式,封装到ajaxData
+                    if (!request_data) {
+                        request_data = {};
+                    } else if (typeof request_data === &quot;object&quot;) {
+                        request_data = simplifyJSON(request_data);
+                    }
+                    muti_arguments.push({
+                        method: full_method_name,
+                        data: request_data || {}
+                    });
+                    return that;
+                }
+            };
+
+            return that;
+        },
+        /**
+         * 与路由器建立长连接，获取路由器对指定接口的推送
+         * @method repeatCall
+         * @public
+         * @for Openapi
+         * @param   {string}    full_method_name                            openapi接口方法的全称
+         * @param   {object}    request_configs                             请求接口的额外的配置参数
+         * @param   {object}    request_configs.repeat_call                 长连接请求的具体参数对象
+         * @param   {object}    request_configs.repeat_call.call_id         标识长连接请求的唯一id，默认为“call_” + channel_id
+         * @param   {object}    request_configs.repeat_call.interval        推送的时间间隔，默认为1s，单位s
+         * @param   {object}    request_configs.repeat_call.count           启动一次repeatCall，路由器推送的次数
+         * @param   {object}    request_configs.repeat_call.channel_type    通道类型，默认为local
+         * @param   {string}    request_configs.version                     接口的版本
+         * @param   {string}    request_configs.alias                       xmlhttprequest的别名，同样会在浏览器的network选项中显示
+         * @param   {string}    request_configs.timeout                     xmlhttprequest的超时时间
+         * @param   {object}    callbacks                                   回调函数的包装对象
+         * @param   {function}    callbacks.success                         请求接口的成功回调
+         */
+        repeatCall: function (full_method_name, request_configs, callbacks) {
+            request_configs = request_configs || {};
+            //此方法需要依赖pushstream.js and 此处添加限制只有无传参读取操作的接口才能使用
+            if (!window.PushStream || !window.PushStreamManager) {
+                throw new Error(&quot;The repeatCall depends on the pushstream.js&quot;);
+            } else {
+                //校验参数
+                checkRequestParameter(full_method_name, null, callbacks);
+                var channel_id = full_method_name.replace(/\./g, &quot;_&quot;);
+                var repeat_call = request_configs.repeat_call || {};
+                repeat_call.call_id = &quot;call_&quot; + channel_id;
+                repeat_call.channel_id = channel_id;    //通道id
+                repeat_call.interval = repeat_call.interval || 1;//默认推送间隔为1s
+                repeat_call.count = repeat_call.count || 30;//默认推送30次
+                repeat_call.channel_type = repeat_call.channel_type || &quot;local&quot;;
+                request_configs.repeat_call = repeat_call;
+                //向路由器发起repeatCall请求
+                new ExecuteSingleRequest(full_method_name, null, request_configs, callbacks);
+                var pushstream = null;
+                var hostname = &quot;push.openapi.hiwifi.com&quot;;
+                var port = &quot;80&quot;;
+                if (current_xhr[&quot;pushstream.&quot; + full_method_name]) {
+                    return;
+                }
+                //与路由器建立长连接，或长轮询连接
+                //@todo缺少相应的请求权限验证
+                if (window.WebSocket) {
+                    pushstream = new PushStream({
+                        host: hostname,
+                        port: port,
+                        modes: &quot;websocket&quot;,
+                        onmessage: function (text) {
+                            if (!text) {
+                                return;
+                            }
+                            callbacks.success(text);
+                        }
+                    });
+                    pushstream.addChannel(channel_id);
+                    pushstream.connect();
+                } else {
+                    pushstream = new PushStream({
+                        host: hostname,
+                        port: port,
+                        modes: &quot;longpolling&quot;,
+                        tagArgument: &#x27;tag&#x27;, //this is the default value, you have to change it to be the same value used on push_stream_last_received_message_tag directive
+                        timeArgument: &#x27;time&#x27;, //this is the default value, you have to change it to be the same value used on push_stream_last_received_message_time directive
+                        useJSONP: true, //this is used only to force jsonp usage on example, it is automatic true when the domains are different
+                        timeout: 30000, //this is the default value, you have to change it to be the same value used on push_stream_longpolling_connection_ttl directive in miliseconds
+                        onmessage: function (text) {
+                            if (!text) {
+                                return;
+                            }
+                            callbacks.success(text);
+                        }
+                    });
+                    pushstream.addChannel(channel_id);
+                    pushstream.connect();
+                }
+                setCurrentXHR(&quot;pushstream.&quot; + full_method_name, pushstream);
+            }
+        },
+        /**
+         * 取消真在执行的xmlhttprequest
+         * @method cancelRequest
+         * @public
+         * @for Openapi
+         * @param   {string}    full_method_name    openapi接口方法的全称
+         */
+        cancelRequest: function (full_method_name) {
+            //同一方法名只缓存20个xmlHttpRequest请求
+            stopRequest(full_method_name);
+        }
+    });
+    //通过location.pathname尝试获取stok字符串，初始化Openapi私有属性stok
+    if (window.location &amp;&amp; window.location.pathname) {
+        stok = window.location.pathname.match(/\/cgi-bin\/turbo(\/;stok=\w+)/) || &quot;&quot;;
+        stok = stok[1] || &quot;&quot;;
+    }
+
+    return (window.Openapi = Openapi);
+})(window);
+
+    </pre>
+</div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+<a id="gotoTop" class='well well-small' href='#'>
+    Top
+</a>
+<script src="../assets/vendor/jquery/jquery-1.8.2.min.js"></script>
+<script src="../assets/vendor/bootstrap/js/bootstrap.min.js"></script>
+<script src="../assets/vendor/prettify/prettify-min.js"></script>
+<script src="../assets/js/config.js"></script>
+<script src="../assets/js/doc.js"></script>
+</body>
+</html>
